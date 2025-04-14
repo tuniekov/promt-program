@@ -1,5 +1,5 @@
 {
-  "app_title": "Промт-программа",
+  "app_title": "Промпт-программа",
   "app_description": "Создайте программу с помощью естественного языка",
   "system_prompt_label": "Системный промт:",
   "system_prompt_placeholder": "Опишите, что должна делать ваша программа...",
@@ -14,7 +14,7 @@
   "user_message_placeholder": "Введите сообщение для нейросети...",
   "send_message_btn": "Отправить",
   "interface_title": "Интерфейс программы",
-  "footer_copyright": "Промт-программа © 2025",
+  "footer_copyright": "Промпт-программа © 2025",
   "status_loading_models": "Загрузка списка моделей...",
   "status_model_unavailable": "Недоступно",
   "error_empty_prompt": "Пожалуйста, введите системный промт",
