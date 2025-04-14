@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="app_title">Промт-программа</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="language-switcher">
+                <button data-lang="ru" class="active" data-i18n="language_ru">Русский</button>
+                <button data-lang="en" data-i18n="language_en">English</button>
+            </div>
+            <h1 data-i18n="app_title">Промт-программа</h1>
+            <p data-i18n="app_description">Создайте программу с помощью естественного языка</p>
+        </header>
+
+        <main>
+            <div class="control-panel">
+                <div class="form-group">
+                    <label for="system-prompt" data-i18n="system_prompt_label">Системный промт:</label>
+                    <textarea id="system-prompt" data-i18n="system_prompt_placeholder" placeholder="Опишите, что должна делать ваша программа..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="model-select" data-i18n="model_select_label">Выберите модель:</label>
+                    <select id="model-select">
+                        <option value="" disabled selected data-i18n="model_select_loading">Загрузка моделей...</option>
+                    </select>
+                </div>
+                
+                <div class="buttons">
+                    <button id="generate-btn" class="primary-btn" data-i18n="generate_btn">Сгенерировать интерфейс</button>
+                    <button id="stop-btn" class="secondary-btn" disabled data-i18n="stop_btn">Остановить</button>
+                    <button id="regenerate-btn" class="secondary-btn" disabled data-i18n="regenerate_btn">Перегенерировать</button>
+                </div>
+                
+                <div id="status" class="status"></div>
+                
+                <div class="history-controls">
+                    <h3 data-i18n="history_controls_title">Управление историей</h3>
+                    <button id="reset-history-btn" class="secondary-btn" data-i18n="reset_history_btn">Сбросить историю</button>
+                    
+                    <!-- Диалог с нейросетью временно отключен
+                    <div class="dialog-container">
+                        <h3 data-i18n="dialog_title">Диалог с нейросетью</h3>
+                        <div id="dialog-history" class="dialog-history"></div>
+                        <div class="dialog-input">
+                            <textarea id="user-message" data-i18n="user_message_placeholder" placeholder="Введите сообщение для нейросети..."></textarea>
+                            <button id="send-message-btn" class="secondary-btn" data-i18n="send_message_btn">Отправить</button>
+                        </div>
+                    </div>
+                    -->
+                </div>
+            </div>
+            
+            <div class="interface-container">
+                <h2 data-i18n="interface_title">Интерфейс программы</h2>
+                <div id="interface-frame-container">
+                    <iframe id="interface-frame" sandbox="allow-same-origin" title="Интерфейс программы"></iframe>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <p data-i18n="footer_copyright">Промт-программа &copy; 2025</p>
+        </footer>
+    </div>
+    
+    <script src="i18n.js"></script>
+    <script src="script.js"></script>
+    <script>
+        // Инициализация модуля i18n после загрузки страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            initI18n();
+        });
+    </script>
+</body>
+</html>
