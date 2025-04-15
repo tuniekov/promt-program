@@ -1,4 +1,6 @@
 @echo off
+:: Установка кодовой страницы UTF-8 для корректного отображения русских символов
+chcp 65001 > nul
 setlocal enabledelayedexpansion
 
 :: Скрипт для развертывания Node.js приложения на сервер Ubuntu
@@ -14,52 +16,65 @@ set /p SERVER_IP="Введите IP-адрес сервера: "
 set /p SSH_USER="Введите имя пользователя SSH: "
 set /p SSH_PASSWORD="Введите пароль SSH: "
 
-:: Проверка наличия утилиты scp и ssh
-where scp >nul 2>nul
-if %ERRORLEVEL% neq 0 (
-    echo Ошибка: Утилита scp не найдена. Убедитесь, что OpenSSH установлен в вашей системе.
+:: Проверка наличия утилит plink и psftp
+if not exist plink.exe (
+    echo Ошибка: Утилита plink.exe не найдена в текущей директории.
     exit /b 1
 )
 
-where ssh >nul 2>nul
-if %ERRORLEVEL% neq 0 (
-    echo Ошибка: Утилита ssh не найдена. Убедитесь, что OpenSSH установлен в вашей системе.
+if not exist psftp.exe (
+    echo Ошибка: Утилита psftp.exe не найдена в текущей директории.
     exit /b 1
 )
 
 :: Создание временной директории для подготовки файлов
 echo Создание временной директории...
-mkdir temp_deploy 2>nul
+if exist temp_deploy rmdir /S /Q temp_deploy
+mkdir temp_deploy
 
 :: Копирование файлов проекта во временную директорию
 echo Копирование файлов проекта...
-xcopy /E /Y ..\* temp_deploy\ >nul
+if exist src xcopy /E /Y src temp_deploy\src\ >nul
+if exist public xcopy /E /Y public temp_deploy\public\ >nul
+if exist package.json copy /Y package.json temp_deploy\ >nul
+if exist package-lock.json copy /Y package-lock.json temp_deploy\ >nul
+if exist README.md copy /Y README.md temp_deploy\ >nul
 
 :: Создание .env файла
 echo Создание .env файла...
 set /p OPENROUTER_API_KEY="Введите API ключ для OpenRouter: "
 set /p ENABLE_PAID_MODELS="Включить платные модели (true/false): "
 
-(
-echo # Порт для запуска сервера
-echo PORT=3000
-echo.
-echo # API ключ для OpenRouter.ai
-echo OPENROUTER_API_KEY=%OPENROUTER_API_KEY%
-echo.
-echo # Активация платных моделей (true/false)
-echo ENABLE_PAID_MODELS=%ENABLE_PAID_MODELS%
-) > temp_deploy\.env
+echo # Порт для запуска сервера > temp_deploy\.env
+echo PORT=3000 >> temp_deploy\.env
+echo. >> temp_deploy\.env
+echo # API ключ для OpenRouter.ai >> temp_deploy\.env
+echo OPENROUTER_API_KEY=%OPENROUTER_API_KEY% >> temp_deploy\.env
+echo. >> temp_deploy\.env
+echo # Активация платных моделей (true/false) >> temp_deploy\.env
+echo ENABLE_PAID_MODELS=%ENABLE_PAID_MODELS% >> temp_deploy\.env
 
 :: Архивирование проекта
 echo Архивирование проекта...
 cd temp_deploy
 tar -czf ../app.tar.gz *
 cd ..
+pause
+:: Проверка наличия архива
+if not exist app.tar.gz (
+    echo Ошибка: Не удалось создать архив app.tar.gz.
+    exit /b 1
+)
 
 :: Копирование архива на сервер
 echo Копирование архива на сервер...
-echo %SSH_PASSWORD% | scp -o StrictHostKeyChecking=no app.tar.gz %SSH_USER%@%SERVER_IP%:/tmp/
+(
+echo cd /tmp
+echo put app.tar.gz
+echo quit
+) > psftp_commands.txt
+psftp.exe %SSH_USER%@%SERVER_IP% -pw %SSH_PASSWORD% -b psftp_commands.txt
+del psftp_commands.txt
 
 :: Выполнение команд на сервере
 echo Развертывание приложения на сервере...
@@ -71,32 +86,40 @@ echo echo "Распаковка архива..."
 echo mkdir -p /var/www/nodeapp
 echo tar -xzf /tmp/app.tar.gz -C /var/www/nodeapp
 echo cd /var/www/nodeapp
-echo.
 echo echo "Установка зависимостей..."
 echo npm ci --production
-echo.
 echo echo "Настройка прав доступа..."
 echo chown -R nodeapp:nodeapp /var/www/nodeapp
-echo.
 echo echo "Настройка PM2..."
-echo sudo -u nodeapp pm2 delete nodeapp 2>/dev/null || true
+echo sudo -u nodeapp pm2 delete nodeapp 2^>/dev/null ^|^| true
 echo sudo -u nodeapp pm2 start src/server.js --name nodeapp
 echo sudo -u nodeapp pm2 save
-echo sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u nodeapp --hp /home/nodeapp
+echo sudo env PATH=\$PATH:/usr/bin pm2 startup systemd -u nodeapp --hp /home/nodeapp
 echo sudo systemctl enable pm2-nodeapp
-echo.
 echo echo "Перезапуск Nginx..."
-echo systemctl restart nginx
-echo.
+echo sudo systemctl restart nginx
 echo echo "Приложение успешно развернуто!"
 echo echo "Доступно по адресу: http://%SERVER_IP%"
 ) > deploy_commands.sh
 
+:: Проверка наличия скрипта
+if not exist deploy_commands.sh (
+    echo Ошибка: Не удалось создать скрипт deploy_commands.sh.
+    exit /b 1
+)
+
 :: Копирование скрипта на сервер
-echo %SSH_PASSWORD% | scp -o StrictHostKeyChecking=no deploy_commands.sh %SSH_USER%@%SERVER_IP%:/tmp/
+echo Копирование скрипта на сервер...
+(
+echo cd /tmp
+echo put deploy_commands.sh
+echo quit
+) > psftp_commands.txt
+psftp.exe %SSH_USER%@%SERVER_IP% -pw %SSH_PASSWORD% -b psftp_commands.txt
+del psftp_commands.txt
 
 :: Выполнение скрипта на сервере
-echo %SSH_PASSWORD% | ssh -o StrictHostKeyChecking=no %SSH_USER%@%SERVER_IP% "chmod +x /tmp/deploy_commands.sh && sudo /tmp/deploy_commands.sh"
+plink.exe -ssh -pw %SSH_PASSWORD% %SSH_USER%@%SERVER_IP% "chmod +x /tmp/deploy_commands.sh && sudo -S /tmp/deploy_commands.sh"
 
 :: Очистка временных файлов
 echo Очистка временных файлов...

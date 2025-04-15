@@ -21,16 +21,19 @@ print_message() {
 
 # Обновление системы
 print_message "Обновление системы"
-apt update && apt upgrade -y
+# Используем DEBIAN_FRONTEND=noninteractive для предотвращения интерактивных запросов
+export DEBIAN_FRONTEND=noninteractive
+apt update
+apt upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
 
 # Установка необходимых пакетов
 print_message "Установка необходимых пакетов"
-apt install -y curl wget git unzip zip htop vim ufw fail2ban
+DEBIAN_FRONTEND=noninteractive apt install -y curl wget git unzip zip htop vim ufw fail2ban
 
 # Установка Node.js и npm
 print_message "Установка Node.js и npm"
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-apt install -y nodejs
+DEBIAN_FRONTEND=noninteractive apt install -y nodejs
 npm install -g npm@latest
 
 # Проверка установки Node.js и npm
@@ -43,7 +46,7 @@ npm install -g pm2
 
 # Установка Nginx
 print_message "Установка и настройка Nginx"
-apt install -y nginx
+DEBIAN_FRONTEND=noninteractive apt install -y nginx
 
 # Настройка базовой конфигурации Nginx
 cat > /etc/nginx/sites-available/default << 'EOL'
@@ -100,14 +103,41 @@ chown -R nodeapp:nodeapp /var/www/nodeapp
 
 # Настройка безопасности SSH
 print_message "Настройка безопасности SSH"
+# Создаем резервную копию оригинального файла
+cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+# Применяем изменения без интерактивных запросов
 sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config
 sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+# Принудительно перезапускаем SSH без запросов
 systemctl restart ssh
 
 # Настройка автоматических обновлений безопасности
 print_message "Настройка автоматических обновлений безопасности"
-apt install -y unattended-upgrades
-dpkg-reconfigure -plow unattended-upgrades
+DEBIAN_FRONTEND=noninteractive apt install -y unattended-upgrades
+
+# Настройка автоматических обновлений без интерактивных запросов
+cat > /etc/apt/apt.conf.d/20auto-upgrades << 'EOL'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";
+EOL
+
+cat > /etc/apt/apt.conf.d/50unattended-upgrades << 'EOL'
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}";
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+};
+Unattended-Upgrade::Package-Blacklist {
+};
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::MinimalSteps "true";
+Unattended-Upgrade::InstallOnShutdown "false";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "false";
+EOL
 
 # Настройка временной зоны
 print_message "Настройка временной зоны"
